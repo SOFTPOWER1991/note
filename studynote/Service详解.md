@@ -16,13 +16,24 @@
 
 # intentService的作用
 
-生成一个默认的且与主线程互相独立的工作者线程来执行所有传送至onStartCommand() 方法的Intetnt。
+如果有一个任务可以分成很多个子任务，需按照顺序完成。如果需放在一个service中完成，那么使用IntentService是最好的选择。
 
-生成一个工作队列来传送Intent对象给你的onHandleIntent()方法，同一时刻只传送一个Intent对象，这样一来，你就不必担心多线程的问题。在所有的请求(Intent)都被执行完以后会自动停止服务，所以，你不需要自己去调用stopSelf()方法来停止。
+* Service在主线程当中使用，在Service中作耗时操作，会卡死主线程；
+* IntentService的优点：
+    
+   1. 内置独立工作线程来处理一个个Intent;
+   2. 创建了一个工作队列，来逐个发送Intent给onHandleIntent;
+   3. 不需要主动调用stopSelf来结束服务，自己已经实现；
+   4. 默认实现了onBind()返回null
+   5. 默认实现了onStartCommand（）的目的是将intent插入到工作队列
 
-该服务提供了一个onBind()方法的默认实现，它返回null
+   
+总结：使用intentService的好处
 
-提供了一个onStartCommand()方法的默认实现，它将Intent先传送至工作队列，然后从工作队列中每次取出一个传送至onHandleIntent()方法，在该方法中对Intent对相应的处理。
+1. 省去了手动开线程的麻烦
+2. 执行完后，不用手动停止service
+3. 设计了一个工作队列，可以启动多次——startSerice()，但只有一个Service实例和一个工作线程。
+
 
 
 # 如何保证service在后台不被Kill （Service保活）
