@@ -1,4 +1,4 @@
-##Android软件工程师——张庚
+## Android软件工程师——张庚
 
 ### 联系方式
 * 电话：15525723303
@@ -58,7 +58,7 @@
 > 1. 方德手写签批：http://app.mi.com/details?id=com.nfschina.sign.cover&ref=search
 > 2. 爱肝医生App官网链接：http://www.aiganyisheng.com/download/aiganyisheng
 
-### 我早起开发的一款个人作品
+### 我早期开发的一款个人作品
 > 1. 通讯助手：链接地址，http://www.anzhi.com/soft_1603657.html
 
 ### 我业余时间做的一些事儿
