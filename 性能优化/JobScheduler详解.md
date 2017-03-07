@@ -174,6 +174,8 @@ if (result == JobScheduler.RESULT_SUCCESS) Log.d(TAG, "Job scheduled successfull
 
 ```
 
+到这里基本就可以使用JobScheduler了！
+
 ## 5. 深入理解JobScheduler
 
 这部分将从源码的角度来解析JobScheduler的工作流程。这个涉及的内容有点懂，将在下一篇博客中介绍！
