@@ -1,3 +1,4 @@
+
 我们对Android引用进行电量优化的目的：延长用户设备的电池使用寿命，减少电池的耗电！提供更好的用户体验。
 
 那么在Android设备中都有哪些地方耗电呢？
@@ -159,6 +160,8 @@ AlarmManager ,Android上实现轮询机制的方法,AlarmManager在Android中主
 2.	休眠的情况下如何唤醒来执行任务？用AlarmManager。如推送消息的获取
 
 ## 手段四：大量高频次的CPU唤醒及操作，我们最好把这些操作集中处理。我们可以采取一些算法来解决。可以借鉴谷歌的精髓，JobScheduler/GCM
+
+JobScheduler的使用，我写了另一篇博客来讲解：[JobScheduler详解](JobScheduler详解.md)
 
 
 
