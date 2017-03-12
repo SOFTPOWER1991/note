@@ -8,15 +8,10 @@ Android 6.0引入了新的权限模式——用户直接在运行时管理应用
 
 请注意：即使您的应用并不以 Android 6.0（API 级别 23）为目标平台，您也应该在新权限模式下测试您的应用。
 
-这种请求方式很是繁琐，在googlesamples 提供了一种更简单的方式[easypermissions
+这种请求方式很是繁琐，在googlesamples 提供了一种更简单的方式 [easypermissions
 ](https://github.com/googlesamples/easypermissions)，而且我的项目一直在使用这种方式！我想总结下这种使用方式，并且读一读源码，了解下这个easypermission的运行原理。
 
 
-# 思考
-
-我想明白了，为什么要懂这些第三方库的原理——对于这些开源库，只有懂原理的时候，以后出问题的话，才能顺利的解决。因此，我想把我项目中以前用到的第三方库的源码读一读，搞明白原理。
-
-下面我们来说说，Android的运行时权限
 # 实例
 
 以Android中打电话为例来说：
@@ -102,6 +97,7 @@ if (EasyPermissions.hasPermissions(this, Manifest.permission.CALL_PHONE)) {
 
 这只是对单一的权限！那么如果是很多个权限该怎么办呢？
 
+# 多个权限的申请
 
 只需要在申请的时候多加个权限即可：
 
