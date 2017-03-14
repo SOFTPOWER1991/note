@@ -4,9 +4,9 @@ EasyPermissions是简化 Android M (API >= 23)权限申请的一个库。
 
 # 2. 流程图
 
-	以在App中调用打电话权限为例，流程图如下：
+以在App中调用打电话权限为例，流程图如下：
 	
-	![runtime_permissions](https://github.com/SOFTPOWER1991/note/blob/master/raw/permisson.png)
+![runtime_permissions](https://github.com/SOFTPOWER1991/note/blob/master/raw/permisson.png)
 
 # 3. 具体实现
 
