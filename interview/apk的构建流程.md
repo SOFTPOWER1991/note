@@ -7,22 +7,22 @@ App的开发完成后，需要打包并上线！我打包的过程一般都是�
 > 3. 引用的库：so文件，jar文件
 > 4. 第三方module
 
-这么多的文件，是如何打包的一个apk里面来的呢？下面进行一个探究，看Android 官方文档给的一个打包流程图：
+这么多的文件，是如何打包的一个`apk`里面来的呢？下面进行一个探究，看`Android 官方文档`给的一个打包流程图：
 
 ![process_2x.png](https://github.com/SOFTPOWER1991/note/blob/master/raw/build-process_2x.png)
 
-根据官方文档对这个流程的结束，我理解后做如下转述：
+根据官方文档对这个流程的描述，我理解后做如下转述：
 
-1. 编译器将我们自己的Android工程下的源码文件、资源文件、aidl文件 和 依赖的module库文件、AAR库、jar库进行编译，所有源码编译后输出DEX文件，所有其他内容转换为已编译资源。
-2. 打包器将DEX文件和已编译资源以及keystore文件合并成单个的apk。
-3. 打包器对apk进行签名。如果是调试版本的apk用debug keystore进行合并，如果是release版本的apk用release keystore进行合并。
+1. 编译器将我们自己的`Android`工程下的源码文件、资源文件、aidl文件 和 依赖的module库文件、AAR库、jar库进行编译，所有源码编译后输出DEX文件，所有其他内容转换为已编译资源。
+2. 打包器将DEX文件和已编译资源文件合并成单个的apk。
+3. 打包器对apk进行签名。如果是调试版本的apk用debug keystore进行签名，如果是release版本的apk用release keystore进行签名。
 4. 在生成最终的apk之前，使用zipalign工具对apk进行优化，减少在设备上运行时占用的内存。
 
 整个过程结束后，我们就可以获得debug版本的apk 或者是release版本的apk了。
 
 那么问题来了：
 
-1. 在这个构建流程中用到的那些工具呢？比如：编译器是什么、打包器是什么？
+1. 在这个构建流程中用到的那些工具呢？
 
 在网上搜索资料，大部分的博客都会提到这个图片，但是我怎么也找不到这两个图片的来源。姑且按照这两张图片来看来解释上面的问题：
 
@@ -34,9 +34,7 @@ apk详细构建图：
 
 ![android_build_detail.png](https://github.com/SOFTPOWER1991/note/blob/master/raw/android_build_detail.png)
 
-# 在这个构建流程中用到的那些工具呢？
-
-在图中我看到了涉及到的工具有如下几个：`merger工具`、`aapt`、`AIDL工具`、`apkbuilder`、`javac`、`proguard`、`dex`、`Jarsigner`、`zipalign`.....
+从上面的图中我看到了涉及到的工具有如下几个：`merger工具`、`aapt`、`AIDL工具`、`apkbuilder`、`javac`、`proguard`、`dex`、`Jarsigner`、`zipalign`.....
 
 经过查找我发现这些工具位于sdk目录的`build-tools`下：
 
@@ -81,6 +79,7 @@ apk详细构建图：
 
 > 将签名后的apk进行对齐处理。使用它的优点就是：减少程序运行时对内存的占用。
 
+至此，对APK的打包流程有了一个整体的认识了！
 
 # 参考资源
 
