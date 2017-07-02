@@ -4,19 +4,19 @@
 * 姓名： 张庚
 * 年龄： 26
 * 性别： 男
-* 学历： 全日制统招本科 晋中学院 计算机科学与技术专业
+* 教育： 全日制统招本科 晋中学院 计算机科学与技术专业
 * 工作年限： 3年
 * 电话：15525723303
-* Email: zhanggengdyx@163.com
+* Email: zhanggengdyx@gmail.com
 
 ### 技能清单
 
-* 扎实的Java语言基础、熟悉Android SDK，熟练掌握Android常用开发组件，有能力编写规范、思路清晰且易于维护的代码；
-* 能够借助优秀的第三方库，如：友盟统计、社会分享、融云IM、ButterKnife、EventBus、glide、easypermisson等第三方库独立完成App的快速开发；
+* 扎实的Java语言基础、熟练掌握Android常用开发组件，有能力编写规范、思路清晰且易于维护的代码；
+* 熟练掌握消息机制、UI绘制流程、事件传递机制、Binder机制、IPC机制等常用技术点；
 * 熟悉App的常见内存问题，如：内存泄露、内存抖动、OOM等问题，并知道如何定位、分析、排解这些问题;
 * 熟练掌握App的优化手段，如：内存优化、布局优化、UI渲染优化、APK安装包大小优化、App启动优化等；
-* 熟练掌握消息机制、UI绘制流程、事件传递机制、Binder机制等常用技术点；
-* 有一定的Android源码阅读经验，如：android消息机制、AsyncTask、UI绘制、开源中国、gitosc、easypermisson等开源项目源码
+* 有一定的Android源码阅读经验，如：android消息机制、AsyncTask异步任务、UI绘制、开源中国、gitosc、easypermisson等开源项目源码
+* 能够借助优秀的第三方库，如：友盟统计、社会分享、融云IM、ButterKnife、EventBus、glide、easypermisson等第三方库独立完成App的快速开发；
 * 熟练使用Android Studio进行编码，熟练使用Git进行源码管理以及团队协作；
 * 能够阅读并翻译英文文档，快速学习、掌握新技术并进行实际应用；
 * 能够独立完成项目的开发、多渠道打包、各大应用市场的部署上线；
