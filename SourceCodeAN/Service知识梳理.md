@@ -352,7 +352,20 @@ public class BindingActivity extends Activity {
 ## 使用AIDL 
 
 之前采用 Messenger 的方法实际上是以 AIDL 作为其底层结构。 如上所述，Messenger 会在单一线程中创建包含所有客户端请求的队列，以便服务一次接收一个请求。 不过，如果您想让服务同时处理多个请求，则可直接使用 AIDL。 在此情况下，您的服务必须具备多线程处理能力，并采用线程安全式设计。
+
 如需直接使用 AIDL，您必须创建一个定义编程接口的 .aidl 文件。Android SDK 工具利用该文件生成一个实现接口并处理 IPC 的抽象类，您随后可在服务内对其进行扩展。
+
+如何使用AIDL创建绑定服务，步骤如下：
+
+1. 创建.aidl文件
+> 此文件定义带有方法签名的编程接口
+
+2. 实现接口
+> Android SDK基于您的.aidl文件，使用Java生成一个接口。此接口具有一个名为Stub的内部抽象类，用于扩展Binder类并实现AIDL接口中的方法。你必须扩展Stub类并实现方法。
+
+3. 向客户端公开该接口
+> 实现Service并重写onBind()以返回Stub类的实现。
+
 
 # 6. Service与用户交互的反馈方式
 
