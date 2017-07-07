@@ -4,13 +4,12 @@
 
 本文主要包含如下主题：
 
-1. Service是什么？
-2. Service可以做什么？
-3. 如何创建一个Service？
-4. Service的启动方式探究
-5. Service与用户交互的反馈方式
-6. Service的使用注意事项
-7. Service的工作原理
+* Service是什么？
+* Service可以做什么？
+* 如何创建一个Service？
+* Service的启动方式探究
+* Service与用户交互的反馈方式
+* Service的使用注意事项
 
 下面逐个讨论上面的问题：
 
@@ -340,14 +339,13 @@ public class BindingActivity extends Activity {
 上例说明了客户端如何使用 ServiceConnection 的实现和 onServiceConnected() 回调绑定到服务。下文更详细介绍了绑定到服务的过程。
 
 > 注：在上例中，onStop() 方法将客户端与服务取消绑定。 客户端应在适当时机与服务取消绑定，如附加说明中所述。
-> 
+
 ## 使用Messenger
 
 如需让接口跨不同的进程工作，则可使用 Messenger 为服务创建接口。服务可以这种方式定义对应于不同类型 Message 对象的 Handler。此 Handler 是 Messenger 的基础，后者随后可与客户端分享一个 IBinder，从而让客户端能利用 Message 对象向服务发送命令。此外，客户端还可定义自有Messenger，以便服务回传消息。
 这是执行进程间通信 (IPC) 的最简单方法，因为 Messenger 会在单一线程中创建包含所有请求的队列，这样您就不必对服务进行线程安全设计。
 
-
-
+这块儿的东西也挺多的单独写一篇！
 
 ## 使用AIDL 
 
@@ -366,14 +364,42 @@ public class BindingActivity extends Activity {
 3. 向客户端公开该接口
 > 实现Service并重写onBind()以返回Stub类的实现。
 
+这块儿的东西实在是多，单独总结一篇吧！
 
 # 6. Service与用户交互的反馈方式
 
 ##  6.1 向用户发送通知
+
+一旦运行起来，服务即可使用 Toast 通知或状态栏通知来通知用户所发生的事件。
+
+Toast 通知是指出现在当前窗口的表面、片刻随即消失不见的消息，而状态栏通知则在状态栏中随消息一起提供图标，用户可以选择该图标来采取操作（例如启动 Activity）。
+
+通常，当某些后台工作已经完成（例如文件下载完成）且用户现在可以对其进行操作时，状态栏通知是最佳方法。 当用户从展开视图中选定通知时，通知即可启动 Activity（例如查看已下载的文件）。
+
 ##  6.2 在前台运行服务
 
+前台服务被认为是用户主动意识到的一种服务，因此在内存不足时，系统也不会考虑将其终止。 前台服务必须为状态栏提供通知，放在“正在进行”标题下方，这意味着除非服务停止或从前台移除，否则不能清除通知。
+
+例如，应该将通过服务播放音乐的音乐播放器设置为在前台运行，这是因为用户明确意识到其操作。 状态栏中的通知可能表示正在播放的歌曲，并允许用户启动 Activity 来与音乐播放器进行交互。
+
+要请求让服务运行于前台，请调用 startForeground()。此方法采用两个参数：唯一标识通知的整型数和状态栏的 Notification。例如：
+
+```
+Notification notification = new Notification(R.drawable.icon, getText(R.string.ticker_text),
+        System.currentTimeMillis());
+Intent notificationIntent = new Intent(this, ExampleActivity.class);
+PendingIntent pendingIntent = PendingIntent.getActivity(this, 0, notificationIntent, 0);
+notification.setLatestEventInfo(this, getText(R.string.notification_title),
+        getText(R.string.notification_message), pendingIntent);
+startForeground(ONGOING_NOTIFICATION_ID, notification);
+
+```
+要从前台移除服务，请调用 stopForeground()。此方法采用一个布尔值，指示是否也移除状态栏通知。 此方法不会停止服务。 但是，如果您在服务正在前台运行时将其停止，则通知也会被移除。
+
 # 7. Service的使用注意事项
-# 8. Service的工作原理
+
+除非另行指定，服务一直在主线程中运行。如果要做耗时操作，需在服务内启动新线程来完成这项工作。否则会导致：ANR。
+
 
 
 
