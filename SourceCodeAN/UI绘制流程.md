@@ -750,7 +750,394 @@ protected void onMeasure(int widthMeasureSpec, int heightMeasureSpec) {
 在View的Measure过程完成以后，通过getMeasuredWidth/Height方法就可以正确的获取到View的测量宽、高。
 
 ## 2.2 Layout过程源码分析
+
+Layout的作用是ViewGroup用来确定子元素的位置，当ViewGroup的位置被确定后，它在onLayout中会遍历所有的子元素并调用其layout方法，在layout方法中onLayout方法又会被调用。layout方法确定View本身的位置，而onLayout方法则会确定所有子元素的位置。
+
+先看看View的layout方法，代码如下：
+```
+public void layout(int l, int t, int r, int b) {
+        if ((mPrivateFlags3 & PFLAG3_MEASURE_NEEDED_BEFORE_LAYOUT) != 0) {
+            onMeasure(mOldWidthMeasureSpec, mOldHeightMeasureSpec);
+            mPrivateFlags3 &= ~PFLAG3_MEASURE_NEEDED_BEFORE_LAYOUT;
+        }
+
+        int oldL = mLeft;
+        int oldT = mTop;
+        int oldB = mBottom;
+        int oldR = mRight;
+
+        boolean changed = isLayoutModeOptical(mParent) ?
+                setOpticalFrame(l, t, r, b) : setFrame(l, t, r, b);
+
+        if (changed || (mPrivateFlags & PFLAG_LAYOUT_REQUIRED) == PFLAG_LAYOUT_REQUIRED) {
+            onLayout(changed, l, t, r, b);
+
+            if (shouldDrawRoundScrollbar()) {
+                if(mRoundScrollbarRenderer == null) {
+                    mRoundScrollbarRenderer = new RoundScrollbarRenderer(this);
+                }
+            } else {
+                mRoundScrollbarRenderer = null;
+            }
+
+            mPrivateFlags &= ~PFLAG_LAYOUT_REQUIRED;
+
+            ListenerInfo li = mListenerInfo;
+            if (li != null && li.mOnLayoutChangeListeners != null) {
+                ArrayList<OnLayoutChangeListener> listenersCopy =
+                        (ArrayList<OnLayoutChangeListener>)li.mOnLayoutChangeListeners.clone();
+                int numListeners = listenersCopy.size();
+                for (int i = 0; i < numListeners; ++i) {
+                    listenersCopy.get(i).onLayoutChange(this, l, t, r, b, oldL, oldT, oldR, oldB);
+                }
+            }
+        }
+
+        mPrivateFlags &= ~PFLAG_FORCE_LAYOUT;
+        mPrivateFlags3 |= PFLAG3_IS_LAID_OUT;
+    }
+```
+layout方法的大致流程如下：
+1. 首先通过setFrame方法来设定View的四个顶点的位置，即初始化mLeft、mRight、mTop和mBottom这四个值，View的四个顶点一旦确定，那么View在父容器中的位置也就确定了。
+2. 接着调用onLayout方法，这样父容器就可以确定子元素的位置。
+
+接下来看看onLayout方法，代码如下：
+```
+ protected void onLayout(boolean changed, int left, int top, int right, int bottom) {
+    }
+```
+可以看到方法是个空方法，View和ViewGroup均没有真正实现onLayout方法，需要具体的View和ViewGroup去实现。我们看看Linearlayout的该方法：
+```
+@Override
+protected void onLayout(boolean changed, int l, int t, int r, int b) {
+    if (mOrientation == VERTICAL) {
+        layoutVertical(l, t, r, b);
+    } else {
+        layoutHorizontal(l, t, r, b);
+    }
+}
+```
+依然后vertical和horizontal两个分支，我们选择Vertical这个分支来阅读。代码如下：
+```
+/**
+     * Position the children during a layout pass if the orientation of this
+     * LinearLayout is set to {@link #VERTICAL}.
+     *
+     * @see #getOrientation()
+     * @see #setOrientation(int)
+     * @see #onLayout(boolean, int, int, int, int)
+     * @param left
+     * @param top
+     * @param right
+     * @param bottom
+     */
+    void layoutVertical(int left, int top, int right, int bottom) {
+        final int paddingLeft = mPaddingLeft;
+
+        int childTop;
+        int childLeft;
+        
+        // Where right end of child should go
+        final int width = right - left;
+        int childRight = width - mPaddingRight;
+        
+        // Space available for child
+        int childSpace = width - paddingLeft - mPaddingRight;
+        
+        final int count = getVirtualChildCount();
+
+        final int majorGravity = mGravity & Gravity.VERTICAL_GRAVITY_MASK;
+        final int minorGravity = mGravity & Gravity.RELATIVE_HORIZONTAL_GRAVITY_MASK;
+
+        switch (majorGravity) {
+           case Gravity.BOTTOM:
+               // mTotalLength contains the padding already
+               childTop = mPaddingTop + bottom - top - mTotalLength;
+               break;
+
+               // mTotalLength contains the padding already
+           case Gravity.CENTER_VERTICAL:
+               childTop = mPaddingTop + (bottom - top - mTotalLength) / 2;
+               break;
+
+           case Gravity.TOP:
+           default:
+               childTop = mPaddingTop;
+               break;
+        }
+
+        for (int i = 0; i < count; i++) {
+            final View child = getVirtualChildAt(i);
+            if (child == null) {
+                childTop += measureNullChild(i);
+            } else if (child.getVisibility() != GONE) {
+                final int childWidth = child.getMeasuredWidth();
+                final int childHeight = child.getMeasuredHeight();
+                
+                final LinearLayout.LayoutParams lp =
+                        (LinearLayout.LayoutParams) child.getLayoutParams();
+                
+                int gravity = lp.gravity;
+                if (gravity < 0) {
+                    gravity = minorGravity;
+                }
+                final int layoutDirection = getLayoutDirection();
+                final int absoluteGravity = Gravity.getAbsoluteGravity(gravity, layoutDirection);
+                switch (absoluteGravity & Gravity.HORIZONTAL_GRAVITY_MASK) {
+                    case Gravity.CENTER_HORIZONTAL:
+                        childLeft = paddingLeft + ((childSpace - childWidth) / 2)
+                                + lp.leftMargin - lp.rightMargin;
+                        break;
+
+                    case Gravity.RIGHT:
+                        childLeft = childRight - childWidth - lp.rightMargin;
+                        break;
+
+                    case Gravity.LEFT:
+                    default:
+                        childLeft = paddingLeft + lp.leftMargin;
+                        break;
+                }
+
+                if (hasDividerBeforeChildAt(i)) {
+                    childTop += mDividerHeight;
+                }
+
+                childTop += lp.topMargin;
+                setChildFrame(child, childLeft, childTop + getLocationOffset(child),
+                        childWidth, childHeight);
+                childTop += childHeight + lp.bottomMargin + getNextLocationOffset(child);
+
+                i += getChildrenSkipCount(child, i);
+            }
+        }
+    }
+```
+
+从上面的代码可以看到：
+> 方法内部会遍历所有子元素并调用setChildFrame方法来为子元素指定对应的位置，其中childTop会逐渐增大，这样后面的子元素会被放置在靠下的位置。setChildFrame，则仅仅是调用子元素的Layout方法而已，这样父元素在Layout方法中完成自己的定位以后，就通过onLayout方法去调用子元素的Layout方法，子元素又会通过自己的Layout方法来确定自己的位置，这样一层层的传递下去就完成了整个View树的layout过程。
+
+setChildFrame方法代码如下：
+```
+ private void setChildFrame(View child, int left, int top, int width, int height) {        
+        child.layout(left, top, left + width, top + height);
+    }
+```
+
 ## 2.3 draw过程源码分析
+
+draw过程就是把View绘制到屏幕上，绘制过程遵循如下几步：
+1. 绘制背景，background.draw(canvas)
+2. 绘制自己 onDraw
+3. 绘制children dispatchDraw
+4. 绘制装饰 onDrawScrollBars
+
+```
+ /**
+     * Manually render this view (and all of its children) to the given Canvas.
+     * The view must have already done a full layout before this function is
+     * called.  When implementing a view, implement
+     * {@link #onDraw(android.graphics.Canvas)} instead of overriding this method.
+     * If you do need to override this method, call the superclass version.
+     *
+     * @param canvas The Canvas to which the View is rendered.
+     */
+    @CallSuper
+    public void draw(Canvas canvas) {
+        final int privateFlags = mPrivateFlags;
+        final boolean dirtyOpaque = (privateFlags & PFLAG_DIRTY_MASK) == PFLAG_DIRTY_OPAQUE &&
+                (mAttachInfo == null || !mAttachInfo.mIgnoreDirtyState);
+        mPrivateFlags = (privateFlags & ~PFLAG_DIRTY_MASK) | PFLAG_DRAWN;
+
+        /*
+         * Draw traversal performs several drawing steps which must be executed
+         * in the appropriate order:
+         *
+         *      1. Draw the background
+         *      2. If necessary, save the canvas' layers to prepare for fading
+         *      3. Draw view's content
+         *      4. Draw children
+         *      5. If necessary, draw the fading edges and restore layers
+         *      6. Draw decorations (scrollbars for instance)
+         */
+
+        // Step 1, draw the background, if needed
+        int saveCount;
+
+        if (!dirtyOpaque) {
+            drawBackground(canvas);
+        }
+
+        // skip step 2 & 5 if possible (common case)
+        final int viewFlags = mViewFlags;
+        boolean horizontalEdges = (viewFlags & FADING_EDGE_HORIZONTAL) != 0;
+        boolean verticalEdges = (viewFlags & FADING_EDGE_VERTICAL) != 0;
+        if (!verticalEdges && !horizontalEdges) {
+            // Step 3, draw the content
+            if (!dirtyOpaque) onDraw(canvas);
+
+            // Step 4, draw the children
+            dispatchDraw(canvas);
+
+            // Overlay is part of the content and draws beneath Foreground
+            if (mOverlay != null && !mOverlay.isEmpty()) {
+                mOverlay.getOverlayView().dispatchDraw(canvas);
+            }
+
+            // Step 6, draw decorations (foreground, scrollbars)
+            onDrawForeground(canvas);
+
+            // we're done...
+            return;
+        }
+
+        /*
+         * Here we do the full fledged routine...
+         * (this is an uncommon case where speed matters less,
+         * this is why we repeat some of the tests that have been
+         * done above)
+         */
+
+        boolean drawTop = false;
+        boolean drawBottom = false;
+        boolean drawLeft = false;
+        boolean drawRight = false;
+
+        float topFadeStrength = 0.0f;
+        float bottomFadeStrength = 0.0f;
+        float leftFadeStrength = 0.0f;
+        float rightFadeStrength = 0.0f;
+
+        // Step 2, save the canvas' layers
+        int paddingLeft = mPaddingLeft;
+
+        final boolean offsetRequired = isPaddingOffsetRequired();
+        if (offsetRequired) {
+            paddingLeft += getLeftPaddingOffset();
+        }
+
+        int left = mScrollX + paddingLeft;
+        int right = left + mRight - mLeft - mPaddingRight - paddingLeft;
+        int top = mScrollY + getFadeTop(offsetRequired);
+        int bottom = top + getFadeHeight(offsetRequired);
+
+        if (offsetRequired) {
+            right += getRightPaddingOffset();
+            bottom += getBottomPaddingOffset();
+        }
+
+        final ScrollabilityCache scrollabilityCache = mScrollCache;
+        final float fadeHeight = scrollabilityCache.fadingEdgeLength;
+        int length = (int) fadeHeight;
+
+        // clip the fade length if top and bottom fades overlap
+        // overlapping fades produce odd-looking artifacts
+        if (verticalEdges && (top + length > bottom - length)) {
+            length = (bottom - top) / 2;
+        }
+
+        // also clip horizontal fades if necessary
+        if (horizontalEdges && (left + length > right - length)) {
+            length = (right - left) / 2;
+        }
+
+        if (verticalEdges) {
+            topFadeStrength = Math.max(0.0f, Math.min(1.0f, getTopFadingEdgeStrength()));
+            drawTop = topFadeStrength * fadeHeight > 1.0f;
+            bottomFadeStrength = Math.max(0.0f, Math.min(1.0f, getBottomFadingEdgeStrength()));
+            drawBottom = bottomFadeStrength * fadeHeight > 1.0f;
+        }
+
+        if (horizontalEdges) {
+            leftFadeStrength = Math.max(0.0f, Math.min(1.0f, getLeftFadingEdgeStrength()));
+            drawLeft = leftFadeStrength * fadeHeight > 1.0f;
+            rightFadeStrength = Math.max(0.0f, Math.min(1.0f, getRightFadingEdgeStrength()));
+            drawRight = rightFadeStrength * fadeHeight > 1.0f;
+        }
+
+        saveCount = canvas.getSaveCount();
+
+        int solidColor = getSolidColor();
+        if (solidColor == 0) {
+            final int flags = Canvas.HAS_ALPHA_LAYER_SAVE_FLAG;
+
+            if (drawTop) {
+                canvas.saveLayer(left, top, right, top + length, null, flags);
+            }
+
+            if (drawBottom) {
+                canvas.saveLayer(left, bottom - length, right, bottom, null, flags);
+            }
+
+            if (drawLeft) {
+                canvas.saveLayer(left, top, left + length, bottom, null, flags);
+            }
+
+            if (drawRight) {
+                canvas.saveLayer(right - length, top, right, bottom, null, flags);
+            }
+        } else {
+            scrollabilityCache.setFadeColor(solidColor);
+        }
+
+        // Step 3, draw the content
+        if (!dirtyOpaque) onDraw(canvas);
+
+        // Step 4, draw the children
+        dispatchDraw(canvas);
+
+        // Step 5, draw the fade effect and restore layers
+        final Paint p = scrollabilityCache.paint;
+        final Matrix matrix = scrollabilityCache.matrix;
+        final Shader fade = scrollabilityCache.shader;
+
+        if (drawTop) {
+            matrix.setScale(1, fadeHeight * topFadeStrength);
+            matrix.postTranslate(left, top);
+            fade.setLocalMatrix(matrix);
+            p.setShader(fade);
+            canvas.drawRect(left, top, right, top + length, p);
+        }
+
+        if (drawBottom) {
+            matrix.setScale(1, fadeHeight * bottomFadeStrength);
+            matrix.postRotate(180);
+            matrix.postTranslate(left, bottom);
+            fade.setLocalMatrix(matrix);
+            p.setShader(fade);
+            canvas.drawRect(left, bottom - length, right, bottom, p);
+        }
+
+        if (drawLeft) {
+            matrix.setScale(1, fadeHeight * leftFadeStrength);
+            matrix.postRotate(-90);
+            matrix.postTranslate(left, top);
+            fade.setLocalMatrix(matrix);
+            p.setShader(fade);
+            canvas.drawRect(left, top, left + length, bottom, p);
+        }
+
+        if (drawRight) {
+            matrix.setScale(1, fadeHeight * rightFadeStrength);
+            matrix.postRotate(90);
+            matrix.postTranslate(right, top);
+            fade.setLocalMatrix(matrix);
+            p.setShader(fade);
+            canvas.drawRect(right - length, top, right, bottom, p);
+        }
+
+        canvas.restoreToCount(saveCount);
+
+        // Overlay is part of the content and draws beneath Foreground
+        if (mOverlay != null && !mOverlay.isEmpty()) {
+            mOverlay.getOverlayView().dispatchDraw(canvas);
+        }
+
+        // Step 6, draw decorations (foreground, scrollbars)
+        onDrawForeground(canvas);
+    }
+```
+View绘制过程的传递是通过dispatchDraw方法来实现的，dispatchDraw会遍历调用所有子元素的draw方法，如此draw事件就一层层地传递下去。
 
 # 3. 常用的自定义控件分析
 
