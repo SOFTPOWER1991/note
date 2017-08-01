@@ -5,6 +5,7 @@
 4. 帧动画
 5. View动画的使用场景
 6. 属性动画的使用及其原理
+7. 动画使用中的注意事项
 
 # 1. Android动画的分类
 
@@ -240,7 +241,322 @@ Fragment也可以添加切换动画，可以通过FragmentTransaction中的setCu
 
 # 6. 属性动画的使用及其原理
 
+属性动画是API 11 新加入的特性，动画效果进行了加强，不再像View动画那样只能支持四种简单的变换。属性动画中有ValueAnimator、ObjectAnimator和AnimatorSet等概念，通过他们我们可以实现绚丽的动画。
 
+## 6.1 使用属性动画
+属性动画可以对任意对象的属性进行动画而不仅仅是View，动画默认时间间隔300ms，默认帧率是10ms/帧。
 
+常用的几个动画类是：ValueAnimator、ObjectAnimator、AnimatorSet。
 
+使用案例：
+
+1. 改变一个对象的translationY属性
+	```
+	ObjectAnimator.ofFloat(view,"translationY",values).start();
+	```
+	
+2. 改变一个对象的背景色属性
+	```
+	ValueAnimator colorAnim = ObjectAnimator.ofInt(view,"backgroundColor",/*red*/0xffff8080,/*blue*/0xff8080ff);
+ colorAnim.setDuration(2000);
+ colorAnim.setEvaluator(new ArgbEvaluator());
+ colorAnim.setRepeatCount(ValueAnimator.INFINITE);
+ colorAnim.setRepeatMode(ValueAnimator.REVERSE);
+ colorAnim.start();
+
+	```
+3. 动画集合
+	```
+	AnimatorSet set = new AnimatorSet();
+	set.playTogether(animator1,animator2,animator3);
+	set.setDuration(3*1000).start();
+	```
+
+属性动画除了可以通过代码实现外，还可以通过XML来定义。属性动画需要定义在res/animator下。
+
+```
+<set xmlns:android="http://schemas.android.com/apk/res/android"  
+    android:ordering="sequentially" >  
+  
+    <objectAnimator  
+        android:duration="2000"  
+        android:propertyName="translationX"  
+        android:valueFrom="-500"  
+        android:valueTo="0"  
+        android:valueType="floatType" >  
+    </objectAnimator>  
+  
+    <set android:ordering="together" >  
+        <objectAnimator  
+            android:duration="3000"  
+            android:propertyName="rotation"  
+            android:valueFrom="0"  
+            android:valueTo="360"  
+            android:valueType="floatType" >  
+        </objectAnimator>  
+  
+        <set android:ordering="sequentially" >  
+            <objectAnimator  
+                android:duration="1500"  
+                android:propertyName="alpha"  
+                android:valueFrom="1"  
+                android:valueTo="0"  
+                android:valueType="floatType" >  
+            </objectAnimator>  
+            <objectAnimator  
+                android:duration="1500"  
+                android:propertyName="alpha"  
+                android:valueFrom="0"  
+                android:valueTo="1"  
+                android:valueType="floatType" >  
+            </objectAnimator>  
+        </set>  
+    </set>  
+  
+</set>  
+```
+在XML中可以定义ValueAnimator、ObjectAnimator以及AnimatorSet，其中\<set>对应AnimatorSet，\<animtor>标签对应ValueAnimator，\<objectAnimator>对应ObjectAnimator。\<set>标签的android:ordering属性有两个可选值:"together"和“sequentially”，其中：“together”表示动画集合中的子动画同时播放，“sequentially”则表示动画集合中的子动画按照前后顺序依次播放。默认值为together。
+
+\<objectAnimator>标签的各个属性的含义：
+
+* android:propertyName——表示属性动画的作用对象的属性的名称。
+* android:duration —— 表示动画的时长。
+* android:valueFrom—— 表示属性的起始值。
+* android:valueTo —— 表示属性的结束值。
+* android:startOffset—— 表示动画的延迟时间，当动画开始后，需要延迟多久才会真正播放此动画。
+* android:repeatCount —— 表示动画的重复次数。
+* android:repeatMode —— 表示动画的重复模式。
+* android:valueType —— 表示android:propertyName指定的属性的类型，有intType 和floatType两个可选类型，分别表示属性的类型为整型和浮点型。如果android:propertyName多指定的属性表示的是颜色，那么不需要指定android:valueType，系统会自动对颜色类型的属性做处理。
+
+需要强调的东西：
+
+1. android:repeatCount ,表示动画循环次数。默认值为0 ， -1 表示无线循环。
+2. android:repeatMode，表示动画循环的模式，有两个选项：“repeat” 和 “reverse”，分别表示连续重复和逆向重复。逆向重复是指：第一次播放完以后，第二次会倒着播放动画，第三次再重头开始播放动画，第四次再倒着播放动画，如此反复。
+
+使用，通过代码来控制：
+
+```
+AnimatorSet set = AnimatorInflater.loadAnimator(myContext, R.anim.property_animator)；
+set.setTarget(mButton);
+set.start();
+```
+
+## 6.2 理解插值器和估值器
+
+TimeInterpolator时间插值器：作用根据时间流逝的百分比来计算出当前属性值改变的百分比。内置的有：LinearInterpolator(线性插值器，匀速动画)、AccelerateDecelerateInterpolator(加速减速插值器：动画两头慢中间快)、DecelerateInterpolator(减速插值器：动画越来越慢)。
+
+TypeEvaluator类型估值算法，估值器：作用根据当前属性改变的百分比来计算改变后的属性值，系统内置的有：IntEvaluator(针对整型属性)、FloatEvaluator(浮点型属性)和ArgbEvaluator(Color属性)。
+
+插值器和估值器，是实现非匀速动画的关键。
+
+## 6.3 属性动画的监听器
+
+属性动画提供了监听器用于监听动画的播放过程，主要有两个接口：
+`AnimatorUpdateListener`,`AnimatorListener`.
+
+AnimatorListener代码如下：
+
+```
+  /**
+     * <p>An animation listener receives notifications from an animation.
+     * Notifications indicate animation related events, such as the end or the
+     * repetition of the animation.</p>
+     */
+    public static interface AnimatorListener {
+        /**
+         * <p>Notifies the start of the animation.</p>
+         *
+         * @param animation The started animation.
+         */
+        void onAnimationStart(Animator animation);
+
+        /**
+         * <p>Notifies the end of the animation. This callback is not invoked
+         * for animations with repeat count set to INFINITE.</p>
+         *
+         * @param animation The animation which reached its end.
+         */
+        void onAnimationEnd(Animator animation);
+
+        /**
+         * <p>Notifies the cancellation of the animation. This callback is not invoked
+         * for animations with repeat count set to INFINITE.</p>
+         *
+         * @param animation The animation which was canceled.
+         */
+        void onAnimationCancel(Animator animation);
+
+        /**
+         * <p>Notifies the repetition of the animation.</p>
+         *
+         * @param animation The animation which was repeated.
+         */
+        void onAnimationRepeat(Animator animation);
+    }
+```
+它可以监听动画的开始、结束、取消以及重复播放。
+
+系统还提供了AnimatorListenerAdapter这个类，代码如下：
+```
+/**
+ * Implementors of this interface can add themselves as update listeners
+ * to an <code>ValueAnimator</code> instance to receive callbacks on every animation
+ * frame, after the current frame's values have been calculated for that
+ * <code>ValueAnimator</code>.
+ */
+public static interface AnimatorUpdateListener {
+    /**
+     * <p>Notifies the occurrence of another frame of the animation.</p>
+     *
+     * @param animation The animation which was repeated.
+     */
+    void onAnimationUpdate(ValueAnimator animation);
+
+}
+```
+
+AnimatorUpdateListener会监听整个动画过程，动画是由许多帧组成的，每播放一帧，onAnimationUpdate就会被调用一次。
+
+## 6.4 对任意属性做动画
+
+以对Object的属性abc做动画为例，如果想让动画生效，要满足两个条件：
+1. Object必须要提供setAbc方法，如果动画的时候没有传递初始值，那么还要提供getAbc方法，因为系统要去取abc属性的初始值（如果这个不满足，直接Crash）
+2. Object的setAbc对属性abc所做的改变必须能够通过某种方法反映出来，比如会带来UI的改变（如果条件不满足，动画无效果但不会Crash）
+
+将Button的宽度做扩大到500像素的动画时，发现不起作用，解决方案，官方文档给出了3中解决方案：
+
+* 给你的对象加上get和set方法，如果你有权限的话；
+* 用一个类来包装原始对象，间接为其提供get和set方法；
+* 采用ValueAnimator，监听动画过程，自己实现属性的改变。 
+
+## 6.5 属性动画的工作原理
+
+属性动画的原理：
+> 属性动画要求**动画作用的对象提供该属性的get和set方法**，属性动画根据外界传递的该属性的初始值和最终值，以动画的效果多次去调用set方法，每次传递给set的值都不一样，确切来说是随着时间的推移，所传递的值越来越接近最终值。
+
+以如下代码为入口，分析源码：
+
+```
+ObjectAnimator objectAnimator = ObjectAnimator.ofInt(this , "width" , 500).setDuration(5000); objectAnimator.start();
+```
+从start方法开始:
+```
+@Override
+public void start() {
+    AnimationHandler.getInstance().autoCancelBasedOn(this);
+    if (DBG) {
+        Log.d(LOG_TAG, "Anim target, duration: " + getTarget() + ", " + getDuration());
+        for (int i = 0; i < mValues.length; ++i) {
+            PropertyValuesHolder pvh = mValues[i];
+            Log.d(LOG_TAG, "   Values[" + i + "]: " +
+                pvh.getPropertyName() + ", " + pvh.mKeyframes.getValue(0) + ", " +
+                pvh.mKeyframes.getValue(1));
+        }
+    }
+    super.start();
+}
+```
+
+首先在start方法中通过AnimationHandler把相同的动画取消掉。然后调用super.start()方法，ObjectAnimator的父类是ValueAnimator，所以看看ValueAnimator的方法:
+```
+private void start(boolean playBackwards) {
+        if (Looper.myLooper() == null) {
+            throw new AndroidRuntimeException("Animators may only be run on Looper threads");
+        }
+        mReversing = playBackwards;
+        // Special case: reversing from seek-to-0 should act as if not seeked at all.
+        if (playBackwards && mSeekFraction != -1 && mSeekFraction != 0) {
+            if (mRepeatCount == INFINITE) {
+                // Calculate the fraction of the current iteration.
+                float fraction = (float) (mSeekFraction - Math.floor(mSeekFraction));
+                mSeekFraction = 1 - fraction;
+            } else {
+                mSeekFraction = 1 + mRepeatCount - mSeekFraction;
+            }
+        }
+        mStarted = true;
+        mPaused = false;
+        mRunning = false;
+        mAnimationEndRequested = false;
+        // Resets mLastFrameTime when start() is called, so that if the animation was running,
+        // calling start() would put the animation in the
+        // started-but-not-yet-reached-the-first-frame phase.
+        mLastFrameTime = 0;
+        AnimationHandler animationHandler = AnimationHandler.getInstance();
+        animationHandler.addAnimationFrameCallback(this, (long) (mStartDelay * sDurationScale));
+
+        if (mStartDelay == 0 || mSeekFraction >= 0) {
+            // If there's no start delay, init the animation and notify start listeners right away
+            // to be consistent with the previous behavior. Otherwise, postpone this until the first
+            // frame after the start delay.
+            startAnimation();
+            if (mSeekFraction == -1) {
+                // No seek, start at play time 0. Note that the reason we are not using fraction 0
+                // is because for animations with 0 duration, we want to be consistent with pre-N
+                // behavior: skip to the final value immediately.
+                setCurrentPlayTime(0);
+            } else {
+                setCurrentFraction(mSeekFraction);
+            }
+        }
+    }
+```
+可以看出属性动画需要运行在有Looper的线程中，最后会调用到startAnimation（）来开启属性动画。
+```
+ /**
+     * Called internally to start an animation by adding it to the active animations list. Must be
+     * called on the UI thread.
+     */
+    private void startAnimation() {
+        if (Trace.isTagEnabled(Trace.TRACE_TAG_VIEW)) {
+            Trace.asyncTraceBegin(Trace.TRACE_TAG_VIEW, getNameForTrace(),
+                    System.identityHashCode(this));
+        }
+
+        mAnimationEndRequested = false;
+        initAnimation();
+        mRunning = true;
+        if (mSeekFraction >= 0) {
+            mOverallFraction = mSeekFraction;
+        } else {
+            mOverallFraction = 0f;
+        }
+        if (mListeners != null) {
+            notifyStartListeners();
+        }
+    }
+```
+这个方法将需要执行的动画放入动画列表里。必须在UI线程调用。最终的开启动画操作，走到了：
+```
+private void notifyStartListeners() {
+        if (mListeners != null && !mStartListenersCalled) {
+            ArrayList<AnimatorListener> tmpListeners =
+                    (ArrayList<AnimatorListener>) mListeners.clone();
+            int numListeners = tmpListeners.size();
+            for (int i = 0; i < numListeners; ++i) {
+                tmpListeners.get(i).onAnimationStart(this);
+            }
+        }
+        mStartListenersCalled = true;
+    }
+```
+在notifyStartListeners中，取出每一个动画的监听器监听每一个动画的执行。
+
+# 7. 动画使用中的注意事项
+
+* OOM问题
+> 帧动画中，图片数量过多、图片较大时极容易出现OOM。
+
+* 内存泄露
+> 属性动画中的无限循环动画，需要在Activity退出时及时停止，否则将导致Activity无法释放从而造成内存泄露。
+* 兼容性问题
+> 动画在3.0以下的系统上有兼容性问题，在某些特殊场景可能无法正常工作，要做兼容性适配。
+* View动画的问题
+> View动画是对View的影像做动画，并不是真正地改变View的状态，因此有时候会出现动画完成后View无法隐藏的现象，即setVisibility(View.GONE)失效了，这时候需要调用view.clearAnimation()清楚View动画即可。
+* 不要使用px
+> 动画进行过程中，尽量使用dp,使用px会导致在不同设备上有不同的效果。
+* 动画元素的交互
+> 将View移动后，在Android3.0以前的系统上，不管是View动画还是属性动画，新位置都不发触发点击事件，同时，老位置仍可以触发点击事件。 3.0以后，属性动画的单击事件触发位置为移动后的位置，但是View动画仍然在原位置。
+* 硬件加速
+> 使用动画过程中，建议开启硬件加速，这会提高动画流畅性。
 
