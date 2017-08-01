@@ -132,4 +132,115 @@ public static interface AnimationListener{
 }
 ```
 
+# 3. 自定义View动画
+
+自定义View动画：
+
+1. 继承Anima同这个抽象类，重写它的initialize 和 applyTransformation 方法，在initialize方法中做一些初始化工作，在applyTransformation中进行相应的矩阵变换即可。
+2. 采用Camera简化矩阵变换。
+
+# 4. 帧动画
+
+帧动画是顺序播放一组预定义好的图片。系统提供了一个AnimationDrawable来使用帧动画。使用时：
+
+1. 在XML中定义一个AnimationDrawable
+2. 在代码中进行播放
+
+注意事项：
+
+> 尽量避免使用较大图片，否则容易发生OOM。
+
+# 5. View动画的特殊使用场景
+
+除了View动画的四种形式，View动画还可以有一下特殊使用场景：在ViewGroup中控制子元素的出场效果，在Activity中实现不同Activity之间的切换效果。
+
+## 5.1 LayoutAnimation
+LayoutAnimation 作用于ViewGroup，为ViewGroup指定一个动画，这样当它的子元素出场时都会具有这种动画效果。
+
+具体使用步骤：
+
+1. 定义LayoutAnimation
+
+	```
+	<layoutAnimation xmlns:android="http://schemas.android.com/apk/res/android"
+        android:delay="30%"
+        android:animationOrder="reverse"
+        android:animation="@anim/slide_right"/>
+	
+	```
+2. 指定具体的入场动画
+	```
+	<?xml version="1.0" encoding="utf-8"?>
+<set xmlns:android="http://schemas.android.com/apk/res/android"
+    android:interpolator="@android:anim/accelerate_decelerate_interpolator" 
+    android:shareInterpolator="true"
+    android:fillAfter="true">
+
+    <translate
+        android:duration="100"
+        android:fromXDelta="0.0f"
+        android:fromYDelta="0.0f"
+        android:toXDelta="100.0f"
+        android:toYDelta="100.0f" />
+
+    <scale
+        android:fromXScale="0.0f"
+        android:fromYScale="0.0f"
+        android:pivotX="0.0f"
+        android:pivotY="0.0f"
+        android:toXScale="1.0f"
+        android:toYScale="1.0f" />
+
+
+    <rotate
+        android:fromDegrees="0.0f"
+        android:pivotX="0.0f"
+        android:pivotY="0.0f"
+        android:toDegrees="30.0f" />
+
+    <alpha
+        android:fromAlpha="0.0f"
+        android:toAlpha="1.0f" />
+
+	</set>
+
+	```
+3. 为ViewGroup指定android:layoutAnimation
+
+	```
+	<ListView
+		......
+		android:layoutAnimation = "@anim/anim_layout"
+		......
+	/>
+	```
+	
+除了在XML中配置之外，还可以借助LayoutAnimationController在代码中实现
+	
+```
+	//通过加载XML动画设置文件来创建一个Animation对象；
+   Animation animation=AnimationUtils.loadAnimation(this, R.anim.slide_right);   //得到一个LayoutAnimationController对象；
+   LayoutAnimationController controller = new LayoutAnimationController(animation);   //设置控件显示的顺序；
+   controller.setOrder(LayoutAnimationController.ORDER_REVERSE);   //设置控件显示间隔时间；
+   controller.setDelay(0.3);   //为ListView设置LayoutAnimationController属性；
+   listView.setLayoutAnimation(controller);
+   listView.startLayoutAnimation();
+```
+
+## 5.2 Activity的切换效果
+
+Activity有默认的切换效果，这个效果也可以自定义，这要用到overridePendingTransition(int enterAnim , int exitAnim)这个方法，这个方法必须在startActivity(Intent)或者finish()之后被调用才能生效。
+
+参数含义：
+
+* enterAnim ——Activity被打开时，所需的动画资源id;
+* exitAnim —— Activity被暂停时，所需的动画资源id.
+
+Fragment也可以添加切换动画，可以通过FragmentTransaction中的setCustomAnimations()方法来添加切换动画。
+
+# 6. 属性动画的使用及其原理
+
+
+
+
 
