@@ -32,6 +32,8 @@
 > 7. 根据市场部反馈：对App进行优化，提升用户体验
 > 8. 多渠道打包App并发布应用市场
 
+
+
 #### 2. 中科方德软件有限公司（2014年8月~2015年8月）
 ###### 参与项目：E人E本手写签批插件维护
 > 该项目中我做的事儿：
@@ -51,7 +53,7 @@
 ### 相关链接
 
 ##### 我工作中开发的能够下载到的应用
-> 1. 方德手写签批：http://app.mi.com/details?id=com.nfschina.sign.cover&ref=search
+> 1. 方德手写签批：http://www.wandoujia.com/apps/com.nfschina.sign.cover
 > 2. 爱肝医生App官网链接：http://www.aiganyisheng.com/download/aiganyisheng
 
 ##### 我早期开发的一款个人作品
@@ -62,4 +64,5 @@
 	 * CSDN博客：http://blog.csdn.net/watermusicyes
 	 * 个人博客：http://www.zhanggeng.me/
 > 2. 我关注并参与的一些优秀的开源库，github地址: https://github.com/SOFTPOWER1991
+
 
