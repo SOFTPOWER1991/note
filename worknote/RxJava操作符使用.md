@@ -1,8 +1,13 @@
 RxJava 提供了对事件序列进行变换的支持，这是它的核心功能之一。所谓变换，就是将事件序列中的对象或整个序列进行加工处理，转换成不同的事件或事件序列。
 
+RxJava的操作符分类大致如下：
+
+![](http://7xkl0t.com1.z0.glb.clouddn.com/17-10-16/54371682.jpg)
+
 常见操作符如下：
 
 ![](http://7xkl0t.com1.z0.glb.clouddn.com/17-10-12/53828412.jpg)
+
 
 下文就这些常见操作符挨个解释，并给出具体使用案例：
 
@@ -336,8 +341,201 @@ observable.connect();
 
 ### sort 
 
+toSortList 为事件中的数据排序。
 
+```
+private Integer[] words = {1, 3, 5, 2, 34, 7, 5, 86, 23, 43};
 
+Observable.from(words)
+    .toSortedList()
+    .flatMap(new Func1<List<Integer>, Observable<Integer>>() {
+        @Override
+        public Observable<Integer> call(List<Integer> strings) {
+            return Observable.from(strings);
+        }
+    })
+    .subscribe(new Action1<Integer>() {
+        @Override
+        public void call(Integer strings) {
+            mText.append(strings + "\n");
+        }
+    });
+```
 
+toSortList有很多重载的方法。
 
+### timeStamp
+
+timeStamp 为每个事件加上一个时间戳。
+
+```
+Observable.from(words)
+	//.timestamp()
+    .timestamp(Schedulers.io()) //可指定线程环境，如果指定到子线程，请在最后切换成主线程
+    .subscribe(new Action1<Timestamped<Integer>>() {
+        @Override
+        public void call(Timestamped<Integer> integerTimestamped) {
+
+            SimpleDateFormat sdf=new SimpleDateFormat("yyyy-MM-dd-HH:mm:ss");
+            mText.append("value: "+integerTimestamped.getValue()+"       time:   ");
+            mText.append(sdf.format(new Date(integerTimestamped.getTimestampMillis()))+"\n");
+
+        }
+    });
+```
+
+### zip
+
+zip( )：使用一个函数组合多个Observable发射的数据集合，然后再发射这个结果。通过Observable.zip()方法把多个Observable组合成新的Observable，这个新的Observable对应的数据流由call方法决定。
+
+```
+Observable.zip(
+		Network.getGankApi().getBeauties(200, 1).map(GankBeautyResultToItemsMapper.getInstance()),
+		//获取beauties 数据
+        Network.getZhuangbiApi().search("装逼"),
+        //获取zhuangbi数据
+        new Func2<List<Item>, List<ZhuangbiImage>, List<Item>>() {
+            @Override
+            public List<Item> call(List<Item> gankItems, List<ZhuangbiImage> zhuangbiImages) {
+                List<Item> items = new ArrayList<Item>();
+                for (int i = 0; i < gankItems.size() / 2 && i < zhuangbiImages.size(); i++) {
+                    items.add(gankItems.get(i * 2));
+                    items.add(gankItems.get(i * 2 + 1));
+                    Item zhuangbiItem = new Item();
+                    ZhuangbiImage zhuangbiImage = zhuangbiImages.get(i);
+                    zhuangbiItem.description = zhuangbiImage.description;
+                    zhuangbiItem.imageUrl = zhuangbiImage.image_url;
+                    items.add(zhuangbiItem);
+                }
+                return items;
+            }
+        })
+        //进行数据的糅合
+        .subscribeOn(Schedulers.io())
+        .observeOn(AndroidSchedulers.mainThread())
+        .subscribe(observer);
+```
+
+### retryWhen
+
+通过 retryWhen() 实现 token 失效时的自动重新获取。
+
+```
+ Observable.just(null)
+        .flatMap(new Func1<Object, Observable<FakeThing>>() {
+            @Override
+            public Observable<FakeThing> call(Object o) {
+                return cachedFakeToken.token == null
+                        ? Observable.<FakeThing>error(new NullPointerException("Token is null!"))
+                        : fakeApi.getFakeData(cachedFakeToken);
+            }
+        })
+        .retryWhen(new Func1<Observable<? extends Throwable>, Observable<?>>() {
+            @Override
+            public Observable<?> call(Observable<? extends Throwable> observable) {
+                return observable.flatMap(new Func1<Throwable, Observable<?>>() {
+                    @Override
+                    public Observable<?> call(Throwable throwable) {
+                        if (throwable instanceof IllegalArgumentException || throwable instanceof NullPointerException) {
+                            return fakeApi.getFakeToken("fake_auth_code")
+                                    .doOnNext(new Action1<FakeToken>() {
+                                        @Override
+                                        public void call(FakeToken fakeToken) {
+                                            tokenUpdated = true;
+                                            cachedFakeToken.token = fakeToken.token;
+                                            cachedFakeToken.expired = fakeToken.expired;
+                                        }
+                                    });
+                        }
+                        return Observable.error(throwable);
+                    }
+                });
+            }
+        })
+        .subscribeOn(Schedulers.io())
+        .observeOn(AndroidSchedulers.mainThread())
+        .subscribe(new Action1<FakeThing>() {
+            @Override
+            public void call(FakeThing fakeData) {
+                swipeRefreshLayout.setRefreshing(false);
+                String token = cachedFakeToken.token;
+                if (tokenUpdated) {
+                    token += "(" + getString(R.string.updated) + ")";
+                }
+                tokenTv.setText(getString(R.string.got_token_and_data, token, fakeData.id, fakeData.name));
+            }
+        }, new Action1<Throwable>() {
+            @Override
+            public void call(Throwable throwable) {
+                swipeRefreshLayout.setRefreshing(false);
+                Toast.makeText(getActivity(), R.string.loading_failed, Toast.LENGTH_SHORT).show();
+            }
+        });
+```
+
+上面的例子中：
+
+对于非一次性的 token （即可重复使用的 token），在获取 token 后将它保存起来反复使用，并通过 retryWhen() 实现 token 失效时的自动重新获取，将 token 获取的流程彻底透明化，简化开发流程。
+
+### doOnError
+
+doOnError操作，在订阅出错的时候触发。实例如下：
+
+```
+Observable<Integer> observable =  Observable.create(new Observable.OnSubscribe<Integer>() {  
+   @Override  
+   public void call(Subscriber<? super Integer> subscriber) {  
+       for (int i = 0; i < 5; i++) {  
+           if(i == 3){  
+               subscriber.onError(new Throwable("EROOR"));  
+           }else {  
+               subscriber.onNext(i);  
+           }  
+           try {  
+               Thread.sleep(1000);  
+           } catch (Exception e) {  
+
+           }  
+       }  
+       subscriber.onCompleted();  
+   }  
+});  
+
+Subscriber<Integer> subscriber = new Subscriber<Integer>() {  
+  
+       @Override  
+       public void onNext(Integer v) {  
+           Log.e(TAG,"onNext................."+v);  
+       }  
+
+       @Override  
+       public void onCompleted() {  
+           Log.e(TAG, "onCompleted.................");  
+       }  
+
+       @Override  
+       public void onError(Throwable e) {  
+           Log.e(TAG, "onError.....................");  
+       }  
+};  
+
+observable.doOnError(new Action1<Throwable>() {  
+       @Override  
+       public void call(Throwable throwable) {  
+           Log.e(TAG, "出错了....................."+throwable.toString());  
+       }  
+   })  
+   .subscribe(subscriber);  
+```
+
+### 参考文章
+
+RxJava 学习的时候参考了一系列文章
+
+1. https://mcxiaoke.gitbooks.io/rxdocs/content/Operators.html
+2. https://github.com/ReactiveX/RxJava/wiki
+3. http://www.jcodecraeer.com/a/anzhuokaifa/androidkaifa/2016/0325/4080.html
+4. https://gank.io/post/560e15be2dca930e00da1083
+
+接下来，就是RxJava的实际运用了。接下来打算学习RxAndroid。
 
