@@ -66,6 +66,17 @@ Q1计划：
 
 Android Architecture Components的学习；
 
+目标1: 读完三本书
+
+关键结果1.1 ： 读完《重构--改善既有代码的设计》 产出->读书笔记
+关键结果1.2 ： 读完《编写代码的艺术》 产出->读书笔记
+关键结果1.3 ： 读完《极简主义》产出->读书笔记
+
+目标2：Android Architecture Components的学习
+
+关键结果2.1：学习Android Architecture Components中：Lifecycles，LiveData,ViewModel, Room , Paging的使用并总结成文档；
+关键结果2.2：阅读Components的源码掌握他们的核心原理并在我所负责的模块中进行使用验证
+
 
 
 高质量的完成每次的需求迭代，如何定义高质量：
