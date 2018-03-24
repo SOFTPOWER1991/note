@@ -8,7 +8,7 @@
 fresco:roundAsCircle="true"
 ```
 
-然而，怎么都不管用。后来对比了下官方文档上的案例，原来在导入命名空间时倒错了：
+然而，怎么都不管用。后来对比了下官方文档上的案例，原来在导入命名空间时导错了：
 ```
 <?xml version="1.0" encoding="utf-8"?>
 <RelativeLayout xmlns:android="http://schemas.android.com/apk/res/android"
@@ -35,8 +35,6 @@ fresco:roundAsCircle="true"
 </RelativeLayout>
 ```
 
-排查了好久，最终发现原来是命名空间的问题。
-
 问题既然能来了，就要搞明白。如果说，只是解决当前这个问题，那么so easy ，只需要把
 ```
 xmlns:fresco="http://schemas.android.com/apk/tools"
@@ -51,9 +49,10 @@ xmlns:fresco="http://schemas.android.com/apk/res-auto"
 
 然而，反思一下对于这类问题真的能彻底搞明白了，貌似只是经常在用，但貌似从来没总结过这块儿的内容，借这个机会，总结下Android中命名空间相关的内容：
 从以下几个问题入手：
-1. Android中的命名空间有几种
-2. 都是怎么用的
-3. 有什么区别？
+0. 命名空间是什么？
+1. Android中的命名空间有几种？
+2. 都是怎么用的？
+
 
 先来想个问题:
 
@@ -101,6 +100,48 @@ xmlns:namespace-prefix="namespaceURI"
 刚开始我导入错误的namespaceURI "http://schemas.android.com/tools" 这又是什么鬼，这就引出了Android中的另一个命名空间tools。
 
 tools的命名空间，是帮助开发人员的工具，它的作用只在于开发阶段发挥作用，当APP被打包后，所有关于tools属性将会被摒弃掉。
+
+以下内容来自官方文档——[Tools Attributes Reference
+](https://developer.android.com/studio/write/tool-attributes.html)
+
+tools 属性可以用来做以下三类事：
+
+属性错误处理；
+
+以下属性可以帮助压制lint的警告信息。
+
+tools:ignore
+
+可以用这个属性告诉每个节点要忽略的信息。例如，你可以告诉tools忽略翻译错误。
+
+```
+<string name="show_all_apps" tools:ignore="MissingTranslation">All</string>
+```
+
+tools:targetApi
+
+这个属性和Java代码中的注解@TargetApi的作用是一样的。他告诉tools，你认为这个属性被用在指定的API或者更高版本的API上。
+
+```
+<GridLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:tools="http://schemas.android.com/tools"
+    tools:targetApi="14" >
+```
+
+tools:locale
+
+告诉tools在<resources>元素中默认使用的语言或者国别信息。
+
+```
+<resources xmlns:tools="http://schemas.android.com/tools"
+    tools:locale="es">
+```
+
+设计时view的属性；
+
+
+
+资源压缩属性；
 
 
 
