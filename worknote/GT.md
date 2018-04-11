@@ -23,7 +23,7 @@ GT支持iOS和Android两个手机平台，其中：
 * iOS版是一个Framework包，需要嵌入到APP工程，编译出带GT的APP才能使用；iPhone、iPad都能支持（我没验证过）
 
 
-### GT 的使用步骤：
+### GT 的使用步骤
 
 1. 安装GT SDK：
 	
@@ -34,20 +34,9 @@ GT支持iOS和Android两个手机平台，其中：
 3. 启动嵌入了SDK的APP，进行一波操作之后，就可以看到相应的检测数据了。
 4. 导出数据 data.js 在pc浏览器上可以生成一个详细的检测报告。【优测性能分析】
 
-**没有后台，完全是本地**
 
-使用文档如下:
 
-//TODO: 使用文档  or  video 
-
-1. API文档；
-2. 使用文档，是搞一个文档，还是录制一个video。
-
-测试报告的解读：
-
-##  基础性能说明；
-
-https://github.com/Tencent/GT/blob/master/android/GT-%E5%9F%BA%E7%A1%80%E6%80%A7%E8%83%BD%E8%AF%B4%E6%98%8E.md
+##  基础性能说明
 
 Cpu: 表示进程、线程的繁忙程度； 
 内存：当前进程内存的使用情况，内存占用过高可能会引起内存抖动、OutOfMemory异常； 
@@ -295,17 +284,13 @@ public  static TrafficInfo collect(int mUid) {
 
 ## 布局检测原理以及规则
 
-https://github.com/Tencent/GT/blob/master/android/GT-%E5%B8%83%E5%B1%80%E6%A3%80%E6%B5%8B%E5%8E%9F%E7%90%86%E5%8F%8A%E8%A7%84%E5%88%99.md
-
-流畅度检测——View绘制深度相关知识——hook ViewGroup.dispatchDraw方法。
-
 View构建时长：
 > View在使用之前需要进行inflate操作，此操作在主线程执行且耗时严重，通常是造成卡顿的直接原因。
 
 View绘制深度：
 > View的绘制深度决定着当前试图的复杂度，复杂度越高，越容易引起卡顿。**复杂度高的视图是优化的重点。**
 
-一 View构建时长：
+一、 View构建时长：
 
 View 构建时通过调用inflate函数实现的，setContentView的原理也是通过inflate函数构建View，最佳Hook节点。
 
@@ -333,7 +318,7 @@ View 构建时通过调用inflate函数实现的，setContentView的原理也是
 
 ```
 
-hook 上这些函数之后干什么? 目的? 为什么要hook这些函数？
+
 
 
 
@@ -347,6 +332,10 @@ https://github.com/Tencent/GT/blob/master/android/GT-%E6%B5%81%E7%95%85%E6%80%A7
 
 https://github.com/Tencent/GT/blob/master/android/GT-%E9%A1%B5%E9%9D%A2%E5%90%AF%E5%8A%A8%E6%97%B6%E9%95%BF%E6%A3%80%E6%B5%8B%E5%8E%9F%E7%90%86%E5%8F%8A%E8%A7%84%E5%88%99.md
 
+问题：
 
+1. 何时唤醒Activity？如何唤醒Activity？ startActivity ?
+2. Instrumentation 是什么？
+3. View绘制的流程
 
 
