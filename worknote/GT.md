@@ -324,18 +324,299 @@ View 构建时通过调用inflate函数实现的，setContentView的原理也是
 
 ## 流畅性检测原理以及规则
 
+流畅性检测：简单的来讲就是APP的流畅程度，可以用来衡量的维度有：流畅度检测、页面启动时长、Fragment启动时长，这里主要说流畅度检测。
+
+Android系统在流畅的情况下绘帧速度是60帧/s(即：16.7ms一帧)。当绘帧间隔超过一定时长，我们就可以说此时掉帧了，也就会造成用户直接感官的卡顿。此模块可以统计一秒内绘帧次数（即：流畅度SM），并对丢帧的原因进行代码定位。 
 
 
-https://github.com/Tencent/GT/blob/master/android/GT-%E6%B5%81%E7%95%85%E6%80%A7%E6%A3%80%E6%B5%8B%E5%8E%9F%E7%90%86%E5%8F%8A%E8%A7%84%E5%88%99.md
+一 流畅度检测：
+
+首先Android的帧绘制流程是：
+
+> CPU主线程图像处理->GPU进行光栅化->显示帧。APP产生掉帧的情况大多是由“CPU主线程图像处理”这一步超负载引起的，所以我们思考如何去监控主线程绘制情况。要检测CPU绘制帧的时间，就必须找到那个调用View.dispatchDraw的类，Choreographer类就是那个接受系统垂直同步信号，在每次接受时同步信号触发View的Input、Animation、Draw等操作。
+
+
+所以我们可以向Choreographer类中加入自己的Callback来冒充View的Callback,通过此Callback我们可以获得View绘制的时间、可以统计一秒内帧绘制的能力（后面把此值称作“流畅值SM”，它能直观的代表当前时间段的流畅度）。之所以不用FPS来代表当前流畅度，是因为Android系统默认在前台页面静止时，FPS可能为0，FPS低无法直接代表当前处于卡顿。
+
+
+第一步，代码实现:
+
+```
+long lastTime = 0;
+    long thisTime = 0;
+    @RequiresApi(api = Build.VERSION_CODES.JELLY_BEAN)
+    void startMonitor(){
+        Choreographer.FrameCallback frameCallback = new Choreographer.FrameCallback() {//系统绘帧回调
+            public void doFrame(long frameTimeNanos) {
+
+                thisTime = System.currentTimeMillis();
+                //累计流畅值
+                plusSM(thisTime);//当前秒的SM+1，如果当前秒数已经到下一秒，则将此SM值写入文件
+                //判别超时：
+                if (thisTime - lastTime > 40 && lastTime!=0){
+                    Log.e("DDDD","frame超时"+(thisTime - lastTime)+"ms: "+ lastTime +"-"+ thisTime);
+                    //saveBlockInfo(lastTime, thisTime);//此处保存卡顿信息
+                }
+                //设置下一帧绘制的回调
+                Choreographer.getInstance().postFrameCallback(this);//设置下次系统绘帧回调
+                lastTime = thisTime;
+            }
+        };
+        Choreographer.getInstance().postFrameCallback(frameCallback);
+    }
+
+    //保存当前SM值
+    private long nowTime =1;//当前的时间（ms）
+    private int sm = 1;
+    private void plusSM(long t){
+        if (nowTime ==1){
+            nowTime = t;
+        }
+        if (nowTime/1000 == t/1000){
+            sm++;
+        }else if (t/1000 - nowTime/1000 >=1){
+            //saveSMInfo(sm,t);//此处保存此时的流畅值SM
+            Log.e("DDDD","sm："+sm);
+            sm=1;
+            nowTime = t;
+        }
+    }
+
+```
+第二步，运行结果，可以在消息执行的过程中进行拉栈操作，用于耗时代码的定位；
+
+```
+07-02 22:32:51.721 15931-15931/com.utest.elvistestapplication E/DDDD: frame超时113ms: 1499005971618-1499005971731
+	07-02 22:32:51.781 15931-15931/com.utest.elvistestapplication E/DDDD: frame超时55ms: 1499005971731-1499005971786
+	07-02 22:32:52.001 15931-15931/com.utest.elvistestapplication E/DDDD: sm：17
+	07-02 22:32:53.011 15931-15931/com.utest.elvistestapplication E/DDDD: sm：60
+	07-02 22:32:53.991 15931-15931/com.utest.elvistestapplication E/DDDD: sm：59
+	07-02 22:32:54.991 15931-15931/com.utest.elvistestapplication E/DDDD: sm：60
+	07-02 22:32:56.001 15931-15931/com.utest.elvistestapplication E/DDDD: sm：60
+	......
+
+```
+
+评判规则:
+
+1. 单次大卡顿：当两次绘帧间隔大于70ms，相当于丢了4帧以上，建议开发人员对耗时的代码进行异步或拆分。
+2. 低流畅值区间：流畅值低于40帧/s的区间，导致低流畅值区间出现的原因有两类：“单次大卡顿”“连续小卡顿”，建议开发人员针对不同的场景进行优化。
+
+
 
 ## 页面启动时长检测原理以及规则
 
-https://github.com/Tencent/GT/blob/master/android/GT-%E9%A1%B5%E9%9D%A2%E5%90%AF%E5%8A%A8%E6%97%B6%E9%95%BF%E6%A3%80%E6%B5%8B%E5%8E%9F%E7%90%86%E5%8F%8A%E8%A7%84%E5%88%99.md
+Activity启动时长就是唤醒Activityy到Activity在前台进行第一次绘制的时间，配合“绘帧检测”中定位的掉帧区间，可以直观的展示卡顿问题。
 
-问题：
+1. 实现原理
 
-1. 何时唤醒Activity？如何唤醒Activity？ startActivity ?
-2. Instrumentation 是什么？
-3. View绘制的流程
+a: 对Activity的生命周期监控：
 
+Android 4.0以上的版本可以利用ActivityLifecycleCallbacks来实现对生命周期的监听，但此方法无法得到每个生命周期函数的执行时长。因此我们采用Hook的方式来监控Activity生命周期，这里介绍一下最佳Hook节点：
+
+```
+所有Hook节点：
+hook android.app.Instrumentation.execStartActivity函数 :startActivity函数
+hook android.app.Instrumentation.callActivityOnCreate函数:onCreate函数
+hook android.app.Instrumentation.callActivityOnStart函数:onStart函数
+hook android.app.Instrumentation.callActivityOnResume函数:onResume函数
+hook android.app.Instrumentation.callActivityOnPause函数:onPause函数
+hook android.app.Instrumentation.callActivityOnStop函数:onStop函数
+
+举个例子：
+@HookAnnotation(className = "android.app.Instrumentation")
+public void callActivityOnStart(Activity activity) {
+   LogUtil.e(TAG,"Instrumentation.callActivityOnStart");
+   long start = System.currentTimeMillis();
+   KHookManager.getInstance().callOriginalMethod("android.app.Instrumentation.callActivityOnStart", this, activity);
+   long end = System.currentTimeMillis();
+   ActivityCollector.onInstrumentation_callActivityOnStart(activity,start,end);//PageLoad模块
+}
+```
+Hook数据的结果：
+
+```
+07-03 10:39:39.922 28363-28363/com.utest.pdm.example E/_PDM_HookList_activity: Instrumentation.callActivityOnCreate
+07-03 10:39:40.092 28363-28363/com.utest.pdm.example E/_PDM_HookList_activity: Instrumentation.callActivityOnStart
+07-03 10:39:40.102 28363-28363/com.utest.pdm.example E/_PDM_HookList_activity: Instrumentation.callActivityOnResume
+07-03 10:39:51.192 28363-28363/com.utest.pdm.example E/_PDM_HookList_activity: Instrumentation.execStartActivity
+07-03 10:39:51.222 28363-28363/com.utest.pdm.example E/_PDM_HookList_activity: Instrumentation.callActivityOnPause
+07-03 10:39:51.242 28363-28363/com.utest.pdm.example E/_PDM_HookList_activity: Instrumentation.callActivityOnCreate
+07-03 10:39:51.652 28363-28363/com.utest.pdm.example E/_PDM_HookList_activity: Instrumentation.callActivityOnStart
+07-03 10:39:51.652 28363-28363/com.utest.pdm.example E/_PDM_HookList_activity: Instrumentation.callActivityOnResume
+07-03 10:39:52.042 28363-28363/com.utest.pdm.example E/_PDM_HookList_activity: Instrumentation.callActivityOnStop
+......
+```
+
+如何进行数据的整理：
+
+> 页面分为冷启动和热启动（页面从startActivity开始则是冷启动，如果从onStart或onResume开始，则是热启动），我们可以维护一个页面列表pageList,然后通过hashCode和生命周期函数的执行时间来归类数据，并可以对页面的冷热启动进行分析。
+
+对View绘制的监控：
+
+对View绘制的监控， 只需要hook ViewGroup的dispatchDraw方法：
+
+```
+@HookAnnotation(className = "android.view.ViewGroup")
+protected void dispatchDraw(Canvas canvas) {
+   LogUtil.e(TAG,"ViewGroup.dispatchDraw");
+   Object view = this;
+   ViewDrawCollector.onViewGroup_dispatchDraw_before((View) view);//PageLoad模块
+   KHookManager.getInstance().callOriginalMethod("android.view.ViewGroup.dispatchDraw", this, canvas);
+   ViewDrawCollector.onViewGroup_dispatchDraw_after((View) view);//PageLoad模块
+}
+
+```
+
+首先是对View绘制数据是杂乱无章的，由于ViewGroup的执行是递归的，所以我们发明了一种递归压栈归类法（将当前绘制节点进行压栈和弹栈操作），而且通过最大栈深可以得知View的绘制深度：
+
+```
+private static int stackSize = 0;//dispatchDraw的栈深，每当栈弹光，说明一次绘制完成
+public static DrawInfo drawInfo;//代表一次绘制对象
+
+public static synchronized void onViewGroup_dispatchDraw_before(View view) {
+	//绘制开始--创建对象
+   if (stackSize == 0) {
+       drawInfo = new DrawInfo();
+	}
+	//将draw数据保存在drawInfo中
+	//...省略n行.... 
+   stackSize++;
+	if(stackSize>drawInfo.drawDeep){
+       drawInfo.drawDeep = stackSize;//保存最大绘制深度
+   }
+}
+
+public static synchronized void onViewGroup_dispatchDraw_after(View view) {
+   stackSize--;
+	//绘制栈弹光，则说明当前进行了一次完整的递归绘制，保存drawInfo数据
+   if (stackSize == 0 && drawInfo != null) {
+       drawInfo.drawEnd = System.currentTimeMillis();
+       for (CallBack callBack : callBackArrayList){
+           callBack.onDrawFinish(drawInfo);
+       }
+   }
+}
+
+```
+
+其次是将viewDraw信息匹配给Activity：
+
+```
+//原理：前面说过，将页面对象数据存成一个pageList,当一次绘制完成后，我们先检查此绘制是否为前
+	//一个页面的绘制信息，是则将此绘制数据add到之前页面对象中，否则该绘制信息是新页面的绘制信息。
+    public void onDrawFinish(DrawInfo drawInfo) {
+        synchronized (lock){
+            //检查此绘制是否为前一个页面的绘制信息
+            if (pageList.size()>=2 && pageList.get(pageList.size()-2).isMyDraw(drawInfo)){
+                pageList.get(pageList.size()-2).addDrawInfo(drawInfo);
+                LogUtil.e("Draw","绘制赋值:"+drawInfo.drawClassName +" -> "+pageList.get(pageList.size()-2).activityClassName);
+            }else if(pageList.size()>=1){
+                pageList.get(pageList.size()-1).addDrawInfo(drawInfo);
+                LogUtil.e("Draw","绘制赋值:"+drawInfo.drawClassName +" -> "+ pageList.get(pageList.size()-1).activityClassName);
+            }
+        }
+    }
+	//判别是否属于前一个页面的绘制信息：判断此View的hashCode是否在前一个页面显示的时候绘制过。
+    public boolean isMyDraw(DrawInfo drawInfo){
+        for (DrawInfo d:drawInfoList){
+            if (d.objectHashCode.equals(drawInfo.objectHashCode)){
+                return true;
+            }
+        }
+        return false;
+    }
+
+```
+
+页面启动时长就是唤醒Activity到Activity在前台进行第一次绘制的时间。以下三种情况则可认为页面启动卡顿或启动超时：
+
+1. 启动时长超过250ms
+2. 页面1秒内卡顿超过300ms
+3. 页面5秒内卡顿超过500ms
+
+
+##  Fragment启动时长：
+
+Fragment启动时长就是唤醒Fragment到Fragment执行onResume的完成时间。
+
+1. 实现原理:
+
+对Fragment生命周期的监控： 我们同样采用Hook的方式来监控Fragment生命周期，这里介绍一下最佳Hook节点：
+
+```
+//android.app.Fragment包:
+hook android.app.Fragment.onAttach					:onAttach
+hook android.app.Fragment.performCreate				:onCreate
+hook android.app.Fragment.performCreateView			:onCreateView
+hook android.app.Fragment.performActivityCreated	:onActivityCreated
+hook android.app.Fragment.performStart				:onStart
+hook android.app.Fragment.performResume				:onResume
+hook android.app.Fragment.performPause				:onPause
+hook android.app.Fragment.performStop				:onStop
+hook android.app.Fragment.performDestroyView		:onDestoryView
+hook android.app.Fragment.performDestroy			:onDestory
+hook android.app.Fragment.performDetach				:onDetach
+hook android.app.Fragment.onHiddenChanged			:onHiddenChanged
+hook android.app.Fragment.setUserVisibleHint		:setUserVisibleHint
+
+
+//android.support.v4.app.Fragment包：
+hook android.support.v4.app.Fragment.onAttach					:onAttach
+hook android.support.v4.app.Fragment.performCreate				:onCreate
+hook android.support.v4.app.Fragment.performCreateView			:onCreateView
+hook android.support.v4.app.Fragment.performActivityCreated		:onActivityCreated
+hook android.support.v4.app.Fragment.performStart				:onStart
+hook android.support.v4.app.Fragment.performResume				:onResume
+hook android.support.v4.app.Fragment.performPause				:onPause
+hook android.support.v4.app.Fragment.performStop				:onStop
+hook android.support.v4.app.Fragment.performDestroyView			:onDestoryView
+hook android.support.v4.app.Fragment.performDestroy				:onDestory
+hook android.support.v4.app.Fragment.performDetach				:onDetach
+hook android.support.v4.app.Fragment.onHiddenChanged			:onHiddenChanged
+hook android.support.v4.app.Fragment.setUserVisibleHint			:setUserVisibleHint
+
+//举个例子：	
+@HookAnnotation(className = "android.app.Fragment")
+void performCreate(Bundle savedInstanceState) {
+   LogUtil.e(TAG,"performCreate");
+   long start = System.currentTimeMillis();
+   KHookManager.getInstance().callOriginalMethod("android.app.Fragment.performCreate", this, savedInstanceState);
+   long end = System.currentTimeMillis();
+   String activityClassName = "";
+   String activityHashCode = "";
+   String fragmentClassName = "";
+   String fragmentHashCode = "";
+   Object fragment = this;
+   if (fragment instanceof android.app.Fragment){
+       fragmentClassName =  ((android.app.Fragment)fragment).getClass().getName();
+       fragmentHashCode = ""+this.hashCode();
+       Activity activity = ((android.app.Fragment) fragment).getActivity();
+       if (activity!=null){
+           activityClassName  = activity.getClass().getName();
+           activityHashCode = ""+activity.hashCode();
+       }
+   }
+   FragmentCollector.onFragment_performCreate(activityClassName, activityHashCode,fragmentClassName,fragmentHashCode,start,end);//Fragment模块
+}
+
+```
+
+Hook数据的结果：
+
+```
+07-03 15:21:02.831 22305-22305/com.utest.pdm.example E/_PDM_PDMHookList_Fragment: onAttach
+	07-03 15:21:02.831 22305-22305/com.utest.pdm.example E/_PDM_PDMHookList_Fragment: performCreate
+	07-03 15:21:02.831 22305-22305/com.utest.pdm.example E/_PDM_PDMHookList_Fragment: performCreateView
+	07-03 15:21:02.841 22305-22305/com.utest.pdm.example E/_PDM_PDMHookList_Fragment: performActivityCreated
+	07-03 15:21:02.841 22305-22305/com.utest.pdm.example E/_PDM_PDMHookList_Fragment: performStart
+	07-03 15:21:02.841 22305-22305/com.utest.pdm.example E/_PDM_PDMHookList_Fragment: performResume
+
+```
+
+评判规则:
+
+```
+每个页面详细的启动数据，包含了Fragment生命周期、卡顿信息、页面平均流畅值，启动时长Fragment启动时长就是唤醒Fragment到Fragment执行onResume完成的时间。启动时长超过150ms则可认为页面启动卡顿或启动超时
+```
 
