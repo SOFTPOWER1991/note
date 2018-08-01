@@ -208,6 +208,47 @@ androidExtensions {
 
 在ViewHolder （或者任何自定义类中使用）
 
+现在你可以在任何类上以一个简单的方式构建一个缓存了。仅仅需要做的是让你的类实现LayoutContainer这个接口。这个接口让插件得以查找子view。下面是一个使用的案例：
+
+class ViewHolder(override val containerView: View) : RecyclerView.ViewHolder(containerView), 
+        LayoutContainer {
+ 
+    fun bind(title: String) {
+        itemTitle.text = "Hello Kotlin!"
+    }
+}
+
+The containerView is the one that we are overriding from the LayoutContainer interface. But that’s all you need.
+
+From that moment, you can access the views directly, no need of prepending itemView to get access to the subviews.
+
+Again, if you check the code generation, you’ll see  that it’s taking the view from the cache:
 
 
+((TextView)this._$_findCachedViewById(id.itemTitle)).setText((CharSequence)"Hello Kotlin!");
+1
+((TextView)this._$_findCachedViewById(id.itemTitle)).setText((CharSequence)"Hello Kotlin!");
+
+I’ve used it here on a ViewHolder, but you can see this is generic enough to be used in any class.
+
+Kotlin Android Extension to implement Parcelable
+
+使用新的@Parcelize 注解，你可以让任何类轻松的实现Parcelable接口。
+
+你需要做的就是像下面这样，剩下的艰难动作插件都帮你做了：
+
+@Parcelize
+class Model(val title: String, val amount: Int) : Parcelable
+
+接着你就可以通过Intent来传递数据：
+
+val intent = Intent(this, DetailActivity::class.java)
+intent.putExtra(DetailActivity.EXTRA, model)
+startActivity(intent)
+
+在另一个地方，就可以轻松使用了：
+
+val model: Model = intent.getParcelableExtra(EXTRA)
+
+Customize the cache build
 
