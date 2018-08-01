@@ -9,9 +9,10 @@
 > 把读取到的图片作为一个bitmap放在一个画布上，然后旋转画布来控制图片展示的方向。
 
 问题来了：
-> 这样确实解决了三星上的问题，但是原来没问题的机型上——歪了。**至此，问题明确了：我如何拿到的图片的实际方向**
+> 这样确实解决了三星上的问题，但是原来没问题的机型上——歪了。
+> 
+> 至此，问题明确了：**我如何拿到的图片的实际方向？**
 
-看来这个解决方案不行。
 
 ## 二、Exif
 
@@ -38,7 +39,7 @@
 求助强大的Google 爸爸：
 > exif  android
 
-爸爸给我呈现了如下搜索结果：
+爸爸给我呈现了如下结果：
 
 1. [ExifInterface 官方文档](https://developer.android.com/reference/android/media/ExifInterface)
 2. [ExifInterface 支持库简介](http://developers.googleblog.cn/2017/01/exifinterface.html)
@@ -50,7 +51,7 @@
 > 
 > ExifInterface是Android为我们提供的一个支持库，随着 25.1.0 支持库的发布，支持库大家庭迎来了一名新成员：ExifInterface 支持库。由于 Android 7.1 引入了对框架 ExifInterface 的重大改进，最低可以支持到API 9+。
 > 
-> 在build.gradle文件中引入下面的代码：
+> 在build.gradle文件中引入下面的代码，便可以使用ExifInterface了：
 > 
 > `implementation 'com.android.support:exifinterface:27.1.1'`
 
@@ -58,7 +59,7 @@
 
 ```
 	/**
-     * Reads Exif tags from the specified image file.
+     * 从给定的图片路径中读取图片的exif tag信息.
      */
     public ExifInterface(String filename) throws IOException {
         ......
@@ -71,9 +72,7 @@
     }
 
     /**
-     * Reads Exif tags from the specified image file descriptor. Attribute mutation is supported
-     * for writable and seekable file descriptors only. This constructor will not rewind the offset
-     * of the given file descriptor. Developers should close the file descriptor after use.
+     * 从指定的图像文件描述符中读取Exif标签. 属性突变仅支持可写和可搜索的文件描述符. 此构造函数不会倒回给定文件描述符的偏移量。开发人员在使用后应关闭文件描述符。
      */
     public ExifInterface(FileDescriptor fileDescriptor) throws IOException {
         ......
@@ -86,9 +85,7 @@
     }
 
     /**
-     * Reads Exif tags from the specified image input stream. Attribute mutation is not supported
-     * for input streams. The given input stream will proceed its current position. Developers
-     * should close the input stream after use.
+     * 从给定的输入流中读取图片的exif 信息. 对文件输入流的属性图片不支持. 开发者在使用完之后应该关闭输入流.
      */
     public ExifInterface(InputStream inputStream) throws IOException {
         ......
@@ -233,7 +230,7 @@
 下面给出这个问题的解决方案，步骤如下：
 
 > 1. 根据选中的图片路径获取ExifInterface;
-> 2. 从 ExifInterface中获取到当前图片的选装方向；
+> 2. 从 ExifInterface中获取到当前图片的旋转方向；
 > 3. 把对应路径的图片Bitmap映射到一个画布上
 > 4. 通过Matrix旋转画布，解决方向的问题。
 
@@ -252,8 +249,6 @@ switch (orientation) {
 }
 return Bitmap.createBitmap(bitmap, 0, 0, bitmap.getWidth(), bitmap.getHeight(), mat, true);
 ```
-
-**我刚开始的方向是没错的，问题应该是：找到当前图片的旋转方向。**
 
 至此我的问题就解决了。
 
@@ -357,12 +352,16 @@ Log.e("TAG", "## processingMethod=" + processingMethod);
 以上是这张照片的所有Exif信息，至于具体值是什么意思，我也不懂，借助[HandShaker](https://www.smartisan.com/apps/handshaker)，来看一眼：
 ![](http://7xkl0t.com1.z0.glb.clouddn.com/18-5-7/68784784.jpg)
 
-**上面拿到的一万个Exif属性信息，其实就是上面的这个这个东西。**
+**上面拿到的Exif属性信息，其实就是上图查看的属性信息。**
+
+竟然可以看到我当时拍照的地点，岂不是暴露了我的行踪，不怕：
+> 在Android相机的设置中关闭“位置信息” 就看不到拍照的地点了。
+
 
 
 参考链接:
 
-0. HandShaker 是锤子科技出品的一款在Mac上使用的Android文件管理器，了解下：https://www.smartisan.com/apps/handshaker 很好用；
+0. [HandShaker](https://www.smartisan.com/apps/handshaker ) 是[锤子科技](https://www.smartisan.com/)出品的一款在Mac上使用的Android文件管理器，很好用——免费的；
 1. [ExifInterface 官方文档](https://developer.android.com/reference/android/media/ExifInterface)
 2. [ExifInterface 支持库简介](http://developers.googleblog.cn/2017/01/exifinterface.html)
 
