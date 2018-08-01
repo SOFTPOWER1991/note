@@ -198,5 +198,16 @@ import i kotlinx.android.synthetic.main.view_item.view.*
 
 自从这个新版本的Kotlin以来，Android Extensions已经集成了一些新的有趣功能：任何类中的缓存（有趣的包括  ViewHolder），以及一个新的注释  @Parcelize。还有一种方法可以自定义生成的缓存。
 
+这些features 不是最终的，你想启用他们需要在build.gradle中 添加：
+
+```
+androidExtensions {
+    experimental = true
+}
+```
+
+在ViewHolder （或者任何自定义类中使用）
+
+
 
 
