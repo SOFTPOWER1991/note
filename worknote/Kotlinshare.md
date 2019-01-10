@@ -252,3 +252,27 @@ val model: Model = intent.getParcelableExtra(EXTRA)
 
 Customize the cache build
 
+使用@ContainerOptions来自定义缓存信息。使用它可以对缓存进行自定义 或者阻止一个类来创建它。
+
+默认，它使用Hashmap,但是你也可以改为Android Framework的SparseArray来使用。如果你不需要缓存了，也可以进行定制。
+
+如下面这样使用：
+
+```
+@ContainerOptions(CacheImplementation.SPARSE_ARRAY)
+class MainActivity : AppCompatActivity() {
+...
+}
+```
+
+现在，已知的选项有如下几种：
+
+```
+public enum class CacheImplementation {
+    SPARSE_ARRAY,
+    HASH_MAP,
+    NO_CACHE;
+ 
+    ...
+}
+```
